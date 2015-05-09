@@ -168,7 +168,7 @@ WebRay = function ( parameters ) {
 	this.update = function( tex, data ) {
 		_gl.activeTexture(_gl.TEXTURE0);
 		_gl.bindTexture(_gl.TEXTURE_2D, tex);
-		_gl.texSubImage2D(_gl.TEXTURE_2D, 0, 0, 0, 32, 32, _gl.RGBA, _gl.UNSIGNED_BYTE, data);
+		_gl.texSubImage2D(_gl.TEXTURE_2D, 0, 0, 0, 256, 1, _gl.RGBA, _gl.UNSIGNED_BYTE, data);
 		_gl.bindTexture(_gl.TEXTURE_2D, null);
 	}
 
@@ -194,13 +194,12 @@ WebRay = function ( parameters ) {
 		]);
 		*/
 		
-		var data = new Uint8Array(32*32*4);
-		for ( i = 0; i < 32*32*4;i++ ) data[i] = 0;
-		data[(3+20*32)*4] = (255.0/5.0)*2.0;
+		var data = new Uint8Array(256*4);
+		for ( i = 0; i < 256*4;i++ ) data[i] = 0;
 		
 		var tex = _gl.createTexture();
 		_gl.bindTexture(_gl.TEXTURE_2D, tex);
-		_gl.texImage2D(_gl.TEXTURE_2D, 0, _gl.RGBA, 32, 32, 0, _gl.RGBA, _gl.UNSIGNED_BYTE, data);
+		_gl.texImage2D(_gl.TEXTURE_2D, 0, _gl.RGBA, 256, 1, 0, _gl.RGBA, _gl.UNSIGNED_BYTE, data);
 		_gl.texParameteri(_gl.TEXTURE_2D, _gl.TEXTURE_MAG_FILTER, _gl.NEAREST);
 		_gl.texParameteri(_gl.TEXTURE_2D, _gl.TEXTURE_MIN_FILTER, _gl.NEAREST);
 		_gl.texParameteri(_gl.TEXTURE_2D, _gl.TEXTURE_WRAP_S, _gl.CLAMP_TO_EDGE);
@@ -267,65 +266,40 @@ WebRay = function ( parameters ) {
 			"  return length(max(abs(p)-b,0.0));",
 			"}",
 			"",
-			/*
-			"float obj(in vec3 p, out vec3 color)",
-			"{ ",
-			"  float distance = abs(p.z - 10.0);",
-			"  color = vec3(1.0,1.0,1.0);",
-			"  float dSphere = sdSphere(p-vec3(0,0,10),2.0);",
-			"  if ( dSphere < distance ) {",
-			" 	color = vec3(1.0,0.0,0.0);",
-			"   distance = dSphere;",
-			"  }",
-			"  return distance;",
-			"}",
-			*/
-			/*
 			"float obj(in vec3 p, out vec3 color)",
 			"{ ",
 			"  float distance = abs(p.z - 10.0);",
 			"  color = vec3(1.0,1.0,1.0);",
 			"",
-			"  for ( int n = 0; n < 32; n++ ) {",
-			"   for ( int m = 0; m < 32; m++ ) {",
-			"     vec2 uv = vec2((float(n)+0.5)/32.0, (float(m)+0.5)/32.0);",
-			"     float h = texture2D(uSampler, uv).x;",
-			"     vec3 t = vec3(uv.x*16.0-8.0+0.5, uv.y*16.0-8.0+0.5, 11.0);",
-			"     vec3 b = vec3(0.5,0.5,h*5.0);",
-			"     float d = udBox(p-t,b);",
-			"     if ( d < distance ) {",
-			" 	   color = vec3(1.0,0.0,0.0);",
-			"      distance = d;",
-			"     }",
+			"  int len = int(floor(texture2D(uSampler, vec2(0.0,0.0)).x * 255.0));",
+			"",
+			"  for ( int n = 0; n < 256; n++ ) {",
+			"   if ( n == len ) break;",
+			"   vec4 nm = texture2D(uSampler, vec2((float(n)+1.5)/256.0,0.0));",
+			"   vec3 t = vec3(nm.x*128.0-8.0+0.5, nm.y*128.0-8.0+0.5, 11.0);",
+			"   vec3 b = vec3(0.25,0.25,1.5);",
+			"   float d = udBox(p-t,b);",
+			"   if ( d < distance ) {",
+			" 	 color = vec3(nm.z,nm.w,0.0);",
+			"    distance = d;",
 			"   }",
 			"  }",
-			"  return distance;",
-			"}",
-			*/
-			"float obj(in vec3 p, out vec3 color)",
-			"{ ",
-			"  float distance = abs(p.z - 10.0);",
-			"  color = vec3(1.0,1.0,1.0);",
 			"",
-			"  for ( int n = 0; n < 32; n++ ) {",
-			"   for ( int m = 0; m < 32; m++ ) {",
-			"     vec2 uv = vec2((float(n)+0.5)/32.0, (float(m)+0.5)/32.0);",
-			"     float h = texture2D(uSampler, uv).x;",
-			"     if ( h > 0.2 ) {",
-			"      vec3 t = vec3(uv.x*16.0-8.0+0.5, uv.y*16.0-8.0+0.5, 11.0);",
-			"      vec3 b = vec3(0.5,0.5,h*5.0);",
-			"      float d = udBox(p-t,b);",
-			"      if ( d < distance ) {",
-			" 	    color = vec3(1.0,0.0,0.0);",
-			"       distance = d;",
-			"      }",
-			"     }",
-			"   }",
-			"  }",
 			"  return distance;",
 			"}",
 			"",
-			"vec3 ray(vec3 origin, vec3 direction, out float t, out int objfound, out vec3 normal, out vec3 p) {",
+			"vec3 normal(in vec3 p)",
+			"{",
+			"  vec3 col;",
+			"  const float n_er=0.01;",
+			"  float v1=obj(vec3(p.x+n_er,p.y-n_er,p.z-n_er), col);",
+			"  float v2=obj(vec3(p.x-n_er,p.y-n_er,p.z+n_er), col);",
+			"  float v3=obj(vec3(p.x-n_er,p.y+n_er,p.z-n_er), col);",
+			"  float v4=obj(vec3(p.x+n_er,p.y+n_er,p.z+n_er), col);",
+			"  return normalize(vec3(v4+v1-v3-v2,v3+v4-v1-v2,v2+v4-v3-v1));",
+			"}",
+			"",
+			"vec3 ray(vec3 origin, vec3 direction, out float t, out int objfound, out vec3 n, out vec3 p) {",
 			"  vec3 color;",
 			"  t=FOCALLENGTH;",
 			"  float s=t;",
@@ -337,6 +311,7 @@ WebRay = function ( parameters ) {
 			"    t+=s;",
 			"  }",
 			"",
+			"  n = normal(p);",
 			"  return color;",
 			"}",
 			"",
@@ -356,10 +331,14 @@ WebRay = function ( parameters ) {
 			"  int objfound;",
 			"  vec3 n;",
 			"  vec3 p;",
-			"  vec3 color = ray(cameraPos,rayDirection,f,objfound, n, p);",
-			"",
+			"  vec3 color = ray(cameraPos, rayDirection, f, objfound, n, p);",
 			//"  color = texture2D(uSampler, vec2(0.50, 0.0)).xyz;",
-			"  gl_FragColor=vec4(color,1.0);",
+			"",
+			"  const vec3 light=vec3(0.2,0.2,0.2);",
+			"  vec3 lightv=normalize(light-p);",
+			"  float diffuse=dot(n,lightv);",
+			"",
+			"  gl_FragColor=vec4(color*diffuse,1.0);",
 			"}"
 		].join("\n");
 		

@@ -290,7 +290,7 @@
 				var windowWidth = gameContainer.offsetWidth ;
 				//upscaleFactor = Math.round(windowWidth/256);
 				upscaleFactor = Math.round(windowWidth/256);
-				//upscaleFactor = 1.0;
+				upscaleFactor = 1.0;
 				var windowHeight = Math.round(windowWidth * RENDERER_RATIO); 
 				
 				console.log("w="+windowWidth+" h="+gameContainer.offsetHeight+" u="+upscaleFactor+" H="+windowHeight);
@@ -619,13 +619,28 @@
 				requestAnimationFrame( render );
 				
 				//renderer.render( scene, camera );
-				var d = new Uint8Array(32*32*4);
+				var d = new Uint8Array(256*4);
+				
+				d[0] = snakeMembers.length + fruits.length;
+				
 				for(i = 0; i < snakeMembers.length; i++)
 				{
 					var cube = snakeMembers[i];
-					d[(cube.game_x+cube.game_y*32)*4] = (255.0/5.0)*2.0;
+					d[(i+1)*4+0] = cube.game_x;
+					d[(i+1)*4+1] = cube.game_y;
+					d[(i+1)*4+2] = 255;
+					d[(i+1)*4+3] = 0;
 				}
-				
+
+				for(i = 0; i < fruits.length; i++)
+				{
+					var cube = fruits[i];
+					d[(i+1+snakeMembers.length)*4+0] = cube.game_x;
+					d[(i+1+snakeMembers.length)*4+1] = cube.game_y;
+					d[(i+1+snakeMembers.length)*4+2] = 0;
+					d[(i+1+snakeMembers.length)*4+3] = 255;
+				}
+
 				rayRenderer.update( rayTex, d );
 				
 				rayRenderer.render( rayProg, rayScene, rayTex );
