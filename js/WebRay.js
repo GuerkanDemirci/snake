@@ -4,6 +4,8 @@ WebRay = function ( parameters ) {
 
 	parameters = parameters || {};
 	
+	var mTo = (new Date()).getTime();
+	
 	var _canvas = parameters.canvas !== undefined ? parameters.canvas : document.createElement( 'canvas' ),
 		_context = parameters.context !== undefined ? parameters.context : null,
 
@@ -149,7 +151,10 @@ WebRay = function ( parameters ) {
 
 		_gl.activeTexture(_gl.TEXTURE0);
 		_gl.bindTexture(_gl.TEXTURE_2D, data);
+		
+		var time = ((new Date()).getTime() - mTo)/1000.0;
 
+		var l2 = _gl.getUniformLocation( program, "iGlobalTime" ); if( l2!=null ) _gl.uniform1f(  l2, time );
 		var l3 = _gl.getUniformLocation( program, "iResolution" ); if( l3!=null ) _gl.uniform3f( l3, _viewportWidth, _viewportHeight, 1.0 );
 		var l2 = _gl.getUniformLocation( program, "uSampler"); if ( l2!=null ) _gl.uniform1i( l2, 0);
 		var l1 = _gl.getAttribLocation( program, "pos");
@@ -244,7 +249,7 @@ WebRay = function ( parameters ) {
 		].join("\n");
 
 		var fsSource = [
-			"precision highp float;",
+			"precision highp  float;",
 			"uniform sampler2D uSampler;",
 			"uniform vec3      iResolution;",
 			"uniform float     iGlobalTime;",
@@ -256,6 +261,21 @@ WebRay = function ( parameters ) {
 			"float FOCALLENGTH=1.5;",
 			"float PI=3.14159265;",
 			"",
+			/*
+			"float smin( float a, float b, float k )",
+			"{",
+			"	float h = clamp( 0.5+0.5*(b-a)/k, 0.0, 1.0 );",
+			"	return mix( b, a, h ) - k*h*(1.0-h);",
+			"}",
+			*/
+			/*
+			"float smin( float a, float b, float k )",
+			"{",
+			"	float res = exp( -k*a ) + exp( -k*b );",
+			"	return -log( res )/k;",
+			"}",
+			*/
+			"",
 			"float sdSphere( in vec3 p, in float s )",
 			"{",
 			"  return length(p)-s;",
@@ -263,50 +283,62 @@ WebRay = function ( parameters ) {
 			"",
 			"float udBox( vec3 p, vec3 b )",
 			"{",
-			"  return length(max(abs(p)-b,0.0));",
-			"}",
+			"  return length(max(abs(p)-b,0.0))-0.05;",
+			"}",			
 			"",
-			"float obj(in vec3 p, out vec3 color)",
+			"float obj(in vec3 p, out vec3 color, out int type)",
 			"{ ",
-			"  float distance = abs(p.z - 10.0);",
-			"  color = vec3(1.0,1.0,1.0);",
+			"  float distance = abs(p.z - 16.0);",
+			"  color = vec3(0.0,0.0,0.0);",
+			"  type = 0;",
 			"",
 			"  int len = int(floor(texture2D(uSampler, vec2(0.0,0.0)).x * 255.0));",
 			"",
 			"  for ( int n = 0; n < 256; n++ ) {",
 			"   if ( n == len ) break;",
 			"   vec4 nm = texture2D(uSampler, vec2((float(n)+1.5)/256.0,0.0));",
-			"   vec3 t = vec3(nm.x*128.0-8.0+0.5, nm.y*128.0-8.0+0.5, 11.0);",
-			"   vec3 b = vec3(0.25,0.25,1.5);",
+			"   vec3 t = vec3(nm.x*128.0-8.0, nm.y*128.0-8.0+3.0, 6.0);",
+			"   vec3 b = vec3(0.20,0.20,0.5+abs(sin(iGlobalTime*3.0+float(n)*PI*2.0/float(len)))*0.2);",
 			"   float d = udBox(p-t,b);",
 			"   if ( d < distance ) {",
 			" 	 color = vec3(nm.z,nm.w,0.0);",
 			"    distance = d;",
+			"    type = 1;",
+			//"    distance = smin(distance,d,32.0);",
 			"   }",
 			"  }",
 			"",
 			"  return distance;",
 			"}",
 			"",
+			"float glow(in vec3 p)",
+			"{ ",
+			"  vec4 nm = texture2D(uSampler, vec2(1.5/256.0,0.0));",
+			"  vec3 t = vec3(nm.x*128.0-8.0+0.5, nm.y*128.0-8.0+0.5, 11.0);",
+			"  vec3 b = vec3(0.25,0.25,1.5);",
+			"  return udBox(p-t,b);",
+			"}",
+			"",
 			"vec3 normal(in vec3 p)",
 			"{",
+			"  int type;",
 			"  vec3 col;",
 			"  const float n_er=0.01;",
-			"  float v1=obj(vec3(p.x+n_er,p.y-n_er,p.z-n_er), col);",
-			"  float v2=obj(vec3(p.x-n_er,p.y-n_er,p.z+n_er), col);",
-			"  float v3=obj(vec3(p.x-n_er,p.y+n_er,p.z-n_er), col);",
-			"  float v4=obj(vec3(p.x+n_er,p.y+n_er,p.z+n_er), col);",
+			"  float v1=obj(vec3(p.x+n_er,p.y-n_er,p.z-n_er), col, type);",
+			"  float v2=obj(vec3(p.x-n_er,p.y-n_er,p.z+n_er), col, type);",
+			"  float v3=obj(vec3(p.x-n_er,p.y+n_er,p.z-n_er), col, type);",
+			"  float v4=obj(vec3(p.x+n_er,p.y+n_er,p.z+n_er), col, type);",
 			"  return normalize(vec3(v4+v1-v3-v2,v3+v4-v1-v2,v2+v4-v3-v1));",
 			"}",
 			"",
 			"vec3 ray(vec3 origin, vec3 direction, out float t, out int objfound, out vec3 n, out vec3 p) {",
-			"  vec3 color;",
+			"  vec3 color = vec3(1.0,1.0,0.0);",
 			"  t=FOCALLENGTH;",
 			"  float s=t;",
 			"  const float maxd = 60.0;",
 			"  for(int i=0;i<256;i++){",
 			"    p=origin+direction*t;",
-			"    s=obj(p, color);",
+			"    s=obj(p, color, objfound);",
 			"    if (abs(s)<0.01||t>maxd) break;",
 			"    t+=s;",
 			"  }",
@@ -317,8 +349,10 @@ WebRay = function ( parameters ) {
 			"",
 			"void main(void){",
 			"",
-			"  vec3 cameraPos=vec3(0,0,-1);",
-			"  vec3 cameraTarget=vec3(0,0,0);",
+			//"  vec3 cameraPos=vec3(0,0.0,-1.0);",
+			//"  vec3 cameraTarget=vec3(0,0.0,0);",
+			"  vec3 cameraPos=vec3(0,-6.8,-1.0);",
+			"  vec3 cameraTarget=vec3(0,-6.0,0.0);",
 			"  vec3 cameraDir=normalize(cameraTarget-cameraPos);",
 			"  vec3 cameraUp=vec3(0,1,0);",
 			"  vec3 imagePlaneX=normalize(cross(cameraUp,cameraDir));",
@@ -327,6 +361,8 @@ WebRay = function ( parameters ) {
 			"  vec2 uv=-1.0+2.0*gl_FragCoord.xy/iResolution.xy;",
 			"  vec3 rayDirection = normalize(cameraDir*FOCALLENGTH+uv.x*imagePlaneX+uv.y*imagePlaneY);",
 			"",
+			//"	uv.x *= iResolution.x/iResolution.y;",
+			"",
 			"  float f;",
 			"  int objfound;",
 			"  vec3 n;",
@@ -334,11 +370,32 @@ WebRay = function ( parameters ) {
 			"  vec3 color = ray(cameraPos, rayDirection, f, objfound, n, p);",
 			//"  color = texture2D(uSampler, vec2(0.50, 0.0)).xyz;",
 			"",
-			"  const vec3 light=vec3(0.2,0.2,0.2);",
+			"  const vec3 light=vec3(0.2,-9.2,-5.2);",
 			"  vec3 lightv=normalize(light-p);",
 			"  float diffuse=dot(n,lightv);",
+//			"  float g = clamp(glow(p),0.5,1.0);",
+//			"  vec3 col = mix(color*diffuse,vec3(0.0,0.0,1.0),1.0-g);",
+			"  vec3 col = color*diffuse;",
 			"",
-			"  gl_FragColor=vec4(color*diffuse,1.0);",
+			"  float r = p.z-6.0;",
+			"  if ( r > 0.0 ) {",
+			"    col = col*max(0.5-r*2.0,0.0);",
+			"  }",
+			/*
+			"  if ( objfound == 0 ) {",
+			"     rayDirection=reflect(rayDirection,n);",
+			"     vec3 color2 = ray(p, rayDirection*0.2, f, objfound, n, p);",
+			"     color2=color2*max(1.0-f*.65,0.0);",
+//			"     color = mix(color, color2, 0.5);",
+			"     col = color2;",
+			"  }",
+			*/
+			"",
+			"",
+			"  // gamma",
+			"  col = pow( clamp(col,0.0,1.0), vec3(0.45) );",
+			"",
+			"  gl_FragColor=vec4(col,1.0);",
 			"}"
 		].join("\n");
 		

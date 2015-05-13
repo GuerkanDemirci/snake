@@ -1,52 +1,11 @@
-<!--
-	Trippy Snake - A 3D snake with silly lights.
-	
-	PLEASE don't use this as a reference for good code, I was just
-	playing with three.js for the first time and came up with this.
-	This code is awful, dirty and will eat your face if you ever 
-	attempt to learn too much from this.
-	Homwever, I release this code as ABSOLUTELY FREE and with no
-	particular license, so do what the hell you want and credit me
-	only if you feel like it. Goodbye :3
-	
-	@author Corigliano Luca <luca.corigliano@outlook.com>
-
-	Hi Luca,
-	I don't care about dresscodes. Even not about source codes.
-	Goodbye <3
-	
-	@author Guerkan Demirci <demircig.gd@googlemail.com>
-
--->
 <html>
 	<head>
-		<!-- for Google -->
-		<meta name="description" content="Trippy Snake WebGL/Signed Distance Field Rendering browser game" />
-		<meta name="keywords" content="Snake, Trippy, Lights, Shadows, Rendering, 3d, webgl, experiment" />
-
-		<meta name="author" content="Corigliano Luca & Guerkan Demirci" />
-		<meta name="copyright" content="2015 Corigliano Luca & Guerkan Demirci" />
-		<meta name="application-name" content="Trippy Snake" />
-
-		<!-- for Facebook -->          
-		<meta property="og:title" content="Trippy Snake - Play now!" />
-		<meta property="og:type" content="game" />
-		<meta property="og:image" content="http://lucafraga.github.io/TrippySnake/img/preview.png" />
-		<meta property="og:url" content="http://lucafraga.github.io/TrippySnake" />
-		<meta property="og:description" content="WebGL browser game based on Snake for Computers, Tablets and Phones!" />
-
-		<!-- for Twitter -->          
-		<meta name="twitter:card" content="summary" />
-		<meta name="twitter:title" content="Trippy Snake - Play now!" />
-		<meta name="twitter:description" content="WebGL browser game based on Snake for Computers, Tablets and Phones!" />
-		<meta name="twitter:image" content="http://lucafraga.github.io/TrippySnake/img/preview.png" />
-		<title>Trippy Snake</title>
+		<title>Signed Snake</title>
 		<link rel="stylesheet" type="text/css" href="css/main.css">
 		<script src="js/three.min.js"></script>
 		<script src="js/WebRay.js"></script>
 		<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, maximum-scale=1, user-scalable=0"> 
 	<body>
-		<!-- Requirements -->
 
 		<div id="main">
 			<div id="button_container">
@@ -304,6 +263,12 @@
 
 				windowWidth /= upscaleFactor;
 				windowHeight /= upscaleFactor;	
+				
+				windowWidth = gameContainer.offsetWidth;
+				windowHeight = gameContainer.offsetHeight;
+				
+				if ( windowWidth > windowHeight ) windowWidth = windowHeight;
+				if ( windowHeight > windowWidth ) windowHeight = windowWidth;
 
 				/*
 				renderer.setSize( windowWidth, windowHeight );
@@ -639,6 +604,12 @@
 					d[(i+1+snakeMembers.length)*4+1] = cube.game_y;
 					d[(i+1+snakeMembers.length)*4+2] = 0;
 					d[(i+1+snakeMembers.length)*4+3] = 255;
+					if ( cube.game_isPowerup )
+					{
+						d[(i+1+snakeMembers.length)*4+2] = 255;
+						d[(i+1+snakeMembers.length)*4+3] = 255;
+					}
+						
 				}
 
 				rayRenderer.update( rayTex, d );
